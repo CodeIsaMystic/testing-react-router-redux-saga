@@ -12,6 +12,7 @@ import {
   takeEvery,
 } from "redux-saga/effects"
 import * as matchers from "redux-saga-test-plan/matchers"
+import { throwError } from "redux-saga-test-plan/providers"
 
 import { HoldReservation } from "../../../../../shared/types"
 import { showToast } from "../../toast/redux/toastSlice"
@@ -66,5 +67,29 @@ describe("common to all flows", () => {
       )
       .call(reserveTicketServerCall, holdReservation)
       .run()
+  })
+  test("show error toast and clean up after server error", () => {
+    return (
+      expectSaga(ticketFlow, holdAction)
+        .provide([
+          [
+            matchers.call.fn(reserveTicketServerCall),
+            throwError(new Error("it did not work")),
+          ],
+          // write provider for selector
+          [
+            matchers.select.selector(selectors.getTicketAction),
+            TicketAction.hold,
+          ],
+          [matchers.call.fn(releaseServerCall), null],
+        ])
+        // assert on showToast action
+        .put(
+          showToast(
+            generateErrorToastOptions("it did not work", TicketAction.hold)
+          )
+        )
+        .run()
+    )
   })
 })
